@@ -67,4 +67,4 @@ def train_model(
             plot(train_losses, "blue", os.path.join(OUT_DIR, "train_losses"))
             plot(train_losses, "red", os.path.join(OUT_DIR, "val_losses"))
 
-    return torch.load(os.path.join(OUT_DIR, "best_val.pth"))
+    return torch.load(os.path.join(OUT_DIR, "best_val.pth")).to(DEVICE)

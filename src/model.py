@@ -74,29 +74,9 @@ exp_loss = lambda pred, true: torch.exp(-true * pred).mean()
 
 
 loss_lookup = {
-    "bce": {
-        "criterion": bce_loss,
-        "dataset": Embedding01,
-        "midpoint": np.log(2),
-    },
-    "mse": {
-        "criterion": mse_loss,
-        "dataset": Embedding01,
-        "midpoint": 0.25,
-    },
-    "hinge": {
-        "criterion": hinge_loss,
-        "dataset": EmbeddingPM,
-        "midpoint": 0.25,
-    },
-    "leaky_hinge": {
-        "criterion": leaky_hinge_loss,
-        "dataset": EmbeddingPM,
-        "midpoint": 0.25,
-    },
-    "exp": {
-        "criterion": exp_loss,
-        "dataset": EmbeddingPM,
-        "midpoint": 1,
-    },
+    "bce": (bce_loss, Embedding01),
+    "mse": (mse_loss, Embedding01),
+    "hinge": (hinge_loss, EmbeddingPM),
+    "leaky_hinge": (leaky_hinge_loss, EmbeddingPM),
+    "exp": (exp_loss, EmbeddingPM),
 }
