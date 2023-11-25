@@ -1,8 +1,12 @@
+import torch
 from torch import nn
+import torch.nn.functional as F
+import numpy as np
+from dataset import Embedding01, EmbeddingPM
 
 
 class FFNN(nn.Module):
-    def __init__(self, first_section, second_section, final_activation, dropout):
+    def __init__(self, first_section, second_section, dropout):
         super().__init__()
         first_width, first_depth = first_section
         second_width, second_depth = second_section
@@ -43,7 +47,7 @@ class FFNN(nn.Module):
             ]
         )
 
-        self.last_layer = nn.Sequential(nn.Linear(second_width, 1), final_activation)
+        self.last_layer = nn.Linear(second_width, 1)
 
     def forward(self, x):
         x = self.first_layer(x)
@@ -60,3 +64,39 @@ class FFNN(nn.Module):
             x += residual
 
         return self.last_layer(x)
+
+
+bce_loss = nn.BCEWithLogitsLoss()
+mse_loss = lambda pred, true: F.mse_loss(F.sigmoid(pred), true)
+hinge_loss = lambda pred, true: F.relu(0.25 - pred * true).mean()
+leaky_hinge_loss = lambda pred, true: F.leaky_relu(0.25 - pred * true).mean()
+exp_loss = lambda pred, true: torch.exp(-true * pred).mean()
+
+
+loss_lookup = {
+    "bce": {
+        "criterion": bce_loss,
+        "dataset": Embedding01,
+        "midpoint": np.log(2),
+    },
+    "mse": {
+        "criterion": mse_loss,
+        "dataset": Embedding01,
+        "midpoint": 0.25,
+    },
+    "hinge": {
+        "criterion": hinge_loss,
+        "dataset": EmbeddingPM,
+        "midpoint": 0.25,
+    },
+    "leaky_hinge": {
+        "criterion": leaky_hinge_loss,
+        "dataset": EmbeddingPM,
+        "midpoint": 0.25,
+    },
+    "exp": {
+        "criterion": exp_loss,
+        "dataset": EmbeddingPM,
+        "midpoint": 1,
+    },
+}
