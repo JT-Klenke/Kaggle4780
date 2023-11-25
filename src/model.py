@@ -1,8 +1,7 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
-import numpy as np
 from dataset import Embedding01, EmbeddingPM
+import torch.nn.functional as F
+from torch import nn
+import torch
 
 
 class FFNN(nn.Module):

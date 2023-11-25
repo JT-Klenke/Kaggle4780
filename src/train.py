@@ -1,8 +1,8 @@
-import os
-import torch
-import numpy as np
-from config import DEVICE, OUT_DIR
 from matplotlib import pyplot as plt
+from config import DEVICE, OUT_DIR
+import numpy as np
+import torch
+import os
 
 
 def train_epoch(model, optimizer, criterion, dataloader):

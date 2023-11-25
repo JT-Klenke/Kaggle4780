@@ -1,13 +1,13 @@
+from sklearn.model_selection import KFold, train_test_split
+from config import DEVICE, DATA_DIR, OUT_DIR
+from torch.utils.data import DataLoader
+from model import FFNN, loss_lookup
+from train import train_model
+from torch.optim import SGD
+from utils import load_npz
+import numpy as np
 import optuna
 import torch
-from model import FFNN, loss_lookup
-from config import DEVICE, DATA_DIR, OUT_DIR
-from torch.optim import SGD
-from train import train_model
-from sklearn.model_selection import KFold, train_test_split
-from torch.utils.data import DataLoader
-import numpy as np
-from utils import load_npz
 import os
 
 
@@ -28,7 +28,7 @@ def build_optimizer(model, hparams):
     )
 
 
-def evaluate_model(model, emb1s, emb2s, labels):
+def make_predictions(model, emb1s, emb2s):
     predictions = []
     for emb1, emb2 in zip(emb1s, emb2s):
         emb1 = torch.Tensor(emb1).to(DEVICE)
@@ -37,6 +37,11 @@ def evaluate_model(model, emb1s, emb2s, labels):
         emb2_sentiment = model(emb2).item()
         predictions.append(0 if emb1_sentiment > emb2_sentiment else 1)
 
+    return predictions
+
+
+def evaluate_model(model, emb1s, emb2s, labels):
+    predictions = make_predictions(model, emb1s, emb2s)
     return np.equal(labels, predictions).mean()
 
 
@@ -74,12 +79,15 @@ def cross_validate(data, hparams):
             )
         )
 
+        if np.mean(test_scores) < 0.75:
+            return np.mean(test_scores)
+
     return np.mean(sorted(test_scores)[:-1])
 
 
 def objective(data, trial):
     hparams = {
-        "loss": trial.suggest_catigorical("loss", loss_lookup.keys()),
+        "loss": trial.suggest_categorical("loss", loss_lookup.keys()),
         "num_epochs": trial.suggest_int("num_epochs", 20, 200),
         "train_val_split": trial.suggest_float("train_val_split", 0.05, 0.5),
         "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-1, log=True),
@@ -106,7 +114,7 @@ if __name__ == "__main__":
 
     study = optuna.create_study(
         study_name=name,
-        storage=os.path.join(OUT_DIR, "sqlite:///cs4780.db"),
+        storage=f"sqlite:///{OUT_DIR}cs4780.db",
         load_if_exists=True,
         direction="maximize",
     )
