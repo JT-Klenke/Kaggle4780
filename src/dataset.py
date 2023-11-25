@@ -8,11 +8,12 @@ def get_sentiment_list(emb1s, emb2s, labels):
     seen = {}
 
     def handle_emb(emb, label):
-        seen_label = seen.get(tuple(emb), label)
+        emb_tuple = tuple(emb)
+        seen_label = seen.get(emb_tuple, label)
         assert seen_label == label
         embeddings.append(emb)
         sentiments.append(label)
-        seen[tuple(emb)] = label
+        seen[emb_tuple] = label
 
     for emb1, emb2, label in zip(emb1s, emb2s, labels):
         handle_emb(emb1, 1 - label)

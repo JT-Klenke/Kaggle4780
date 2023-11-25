@@ -37,7 +37,7 @@ def evaluate_model(model, emb1s, emb2s, labels):
         emb2_sentiment = model(emb2).item()
         predictions.append(0 if emb1_sentiment > emb2_sentiment else 1)
 
-    return np.mean(np.equal(labels, predictions))
+    return np.equal(labels, predictions).mean()
 
 
 def cross_validate(data, hparams):
@@ -53,7 +53,7 @@ def cross_validate(data, hparams):
             emb1[train_indices], emb2[train_indices], labels[train_indices]
         )
         train_dataset, val_dataset = train_test_split(
-            train_dataset, train_size=0.2, shuffle=True
+            train_dataset, train_size=hparams["train_val_split"], shuffle=True
         )
         model = build_model(hparams)
         optimizer = build_optimizer(model, hparams)
@@ -81,8 +81,9 @@ def objective(data, trial):
     hparams = {
         "loss": trial.suggest_catigorical("loss", loss_lookup.keys()),
         "num_epochs": trial.suggest_int("num_epochs", 20, 200),
+        "train_val_split": trial.suggest_float("train_val_split", 0.05, 0.5),
         "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-1, log=True),
-        "momentum": trial.suggest_float("momentum", 1e-2, 1, log=True),
+        "momentum": trial.suggest_float("momentum", 1e-2, 1),
         "weight_decay": trial.suggest_float("weight_decay", 1e-5, 5e-1, log=True),
         "first_width": trial.suggest_float("first_width", 0.5, 3),
         "first_depth": trial.suggest_int("first_depth", 0, 10),

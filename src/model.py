@@ -39,7 +39,7 @@ class FFNN(nn.Module):
         self.second_section = nn.ModuleList(
             [
                 nn.Sequential(
-                    nn.Linear(first_width, first_width),
+                    nn.Linear(second_width, second_width),
                     nn.LeakyReLU(),
                     nn.Dropout(p=dropout),
                 )
