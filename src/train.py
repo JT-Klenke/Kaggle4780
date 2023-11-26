@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 from config import DEVICE, OUT_DIR
+from torch.optim import SGD
 import numpy as np
 import torch
 import os
@@ -53,9 +54,18 @@ def train_model(
     train_losses = []
     val_losses = []
     best_val = None
+
+    temp_optimizer = SGD(model.parameters(), lr=0.1, momentum=0.9)
     for epoch in range(num_epochs):
         train_losses.append(
-            np.mean(train_epoch(model, optimizer, criterion, train_dataloader))
+            np.mean(
+                train_epoch(
+                    model,
+                    optimizer if epoch > 3 else temp_optimizer,
+                    criterion,
+                    train_dataloader,
+                )
+            )
         )
         val_loss = np.mean(validate_epoch(model, criterion, val_dataloader))
         val_losses.append(val_loss)
@@ -64,7 +74,7 @@ def train_model(
             torch.save(model, os.path.join(OUT_DIR, "best_val.pth"))
 
         if graph:
-            plot(train_losses, "blue", os.path.join(OUT_DIR, "train_losses"))
-            plot(train_losses, "red", os.path.join(OUT_DIR, "val_losses"))
+            plot(train_losses, "blue", os.path.join(OUT_DIR, "train_losses.png"))
+            plot(val_losses, "red", os.path.join(OUT_DIR, "val_losses.png"))
 
     return torch.load(os.path.join(OUT_DIR, "best_val.pth")).to(DEVICE)

@@ -1,5 +1,7 @@
 import torch
 
+BATCH_SIZE = 512
+
 DATA_DIR = "data/"
 OUT_DIR = "out/"
 

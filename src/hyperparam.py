@@ -1,5 +1,5 @@
 from sklearn.model_selection import KFold, train_test_split
-from config import DEVICE, DATA_DIR, OUT_DIR
+from config import DEVICE, DATA_DIR, OUT_DIR, BATCH_SIZE
 from torch.utils.data import DataLoader
 from model import FFNN, loss_lookup
 from train import train_model
@@ -45,7 +45,7 @@ def evaluate_model(model, emb1s, emb2s, labels):
     return np.equal(labels, predictions).mean()
 
 
-def cross_validate(data, hparams):
+def cross_validate(data, hparams, trial=None):
     emb1, emb2, labels = data
 
     criterion, dataset = loss_lookup[hparams["loss"]]
@@ -53,7 +53,7 @@ def cross_validate(data, hparams):
     kfold = KFold(n_splits=5, shuffle=True)
     test_scores = []
 
-    for train_indices, test_indices in kfold.split(emb1):
+    for step, (train_indices, test_indices) in enumerate(kfold.split(emb1)):
         train_dataset = dataset(
             emb1[train_indices], emb2[train_indices], labels[train_indices]
         )
@@ -67,10 +67,10 @@ def cross_validate(data, hparams):
             model,
             optimizer,
             criterion,
-            DataLoader(train_dataset, batch_size=512, shuffle=True),
-            DataLoader(val_dataset, batch_size=512, shuffle=True),
+            DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True),
+            DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True),
             hparams["num_epochs"],
-            graph=False,
+            graph=True,
         )
 
         test_scores.append(
@@ -79,10 +79,14 @@ def cross_validate(data, hparams):
             )
         )
 
-        if np.mean(test_scores) < 0.75:
-            return np.mean(test_scores)
+        kf_mean = np.mean(test_scores)
 
-    return np.mean(sorted(test_scores)[:-1])
+        if trial:
+            trial.report(kf_mean, step)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
+
+    return kf_mean
 
 
 def objective(data, trial):
@@ -100,7 +104,7 @@ def objective(data, trial):
         "dropout": trial.suggest_float("dropout", 0, 0.75),
     }
 
-    return cross_validate(data, hparams)
+    return cross_validate(data, hparams, trial)
 
 
 if __name__ == "__main__":
@@ -115,7 +119,11 @@ if __name__ == "__main__":
     study = optuna.create_study(
         study_name=name,
         storage=f"sqlite:///{OUT_DIR}cs4780.db",
+        pruner=optuna.pruners.MedianPruner(),
         load_if_exists=True,
         direction="maximize",
     )
-    study.optimize(lambda trial: objective(data, trial), n_trials=500)
+    study.optimize(
+        lambda trial: objective(data, trial),
+        n_trials=500,
+    )
