@@ -13,8 +13,8 @@ import os
 
 def build_model(hparams):
     return FFNN(
-        (hparams["first_width"], hparams["first_depth"]),
-        (hparams["second_width"], hparams["second_depth"]),
+        (hparams["first_width"], hparams["first_depth"], hparams["first_norm"]),
+        (hparams["second_width"], hparams["second_depth"], hparams["second_norm"]),
         hparams["dropout"],
     ).to(DEVICE)
 
@@ -29,6 +29,7 @@ def build_optimizer(model, hparams):
 
 
 def make_predictions(model, emb1s, emb2s):
+    model.eval()
     predictions = []
     for emb1, emb2 in zip(emb1s, emb2s):
         emb1 = torch.Tensor(emb1).to(DEVICE)
@@ -99,8 +100,10 @@ def objective(data, trial):
         "weight_decay": trial.suggest_float("weight_decay", 1e-5, 5e-1, log=True),
         "first_width": trial.suggest_float("first_width", 0.5, 3),
         "first_depth": trial.suggest_int("first_depth", 0, 10),
+        "first_norm": trial.suggest_categorical("first_norm", [True, False]),
         "second_width": trial.suggest_float("second_width", 0.125, 2),
         "second_depth": trial.suggest_int("second_depth", 0, 10),
+        "second_norm": trial.suggest_categorical("second_norm", [True, False]),
         "dropout": trial.suggest_float("dropout", 0, 0.75),
     }
 

@@ -7,8 +7,8 @@ import torch
 class FFNN(nn.Module):
     def __init__(self, first_section, second_section, dropout):
         super().__init__()
-        first_width, first_depth = first_section
-        second_width, second_depth = second_section
+        first_width, first_depth, first_norm = first_section
+        second_width, second_depth, second_norm = second_section
         first_width = int(first_width * 384)
         second_width = int(second_width * 384)
 
@@ -22,6 +22,7 @@ class FFNN(nn.Module):
             [
                 nn.Sequential(
                     nn.Linear(first_width, first_width),
+                    nn.BatchNorm1d(first_width) if first_norm else nn.Identity(),
                     nn.LeakyReLU(),
                     nn.Dropout(p=dropout),
                 )
@@ -39,6 +40,7 @@ class FFNN(nn.Module):
             [
                 nn.Sequential(
                     nn.Linear(second_width, second_width),
+                    nn.BatchNorm1d(second_width) if second_norm else nn.Identity(),
                     nn.LeakyReLU(),
                     nn.Dropout(p=dropout),
                 )
