@@ -14,16 +14,18 @@ class FFNN(nn.Module):
 
         self.first_layer = nn.Sequential(
             nn.Linear(384, first_width),
-            nn.LeakyReLU(),
             nn.Dropout(p=dropout),
         )
 
         self.first_section = nn.ModuleList(
             [
                 nn.Sequential(
+                    nn.BatchNorm1d(first_width) if first_norm else nn.Identity(),
+                    nn.LeakyReLU(),
                     nn.Linear(first_width, first_width),
                     nn.BatchNorm1d(first_width) if first_norm else nn.Identity(),
                     nn.LeakyReLU(),
+                    nn.Linear(first_width, first_width),
                     nn.Dropout(p=dropout),
                 )
                 for _ in range(first_depth)
@@ -31,24 +33,27 @@ class FFNN(nn.Module):
         )
 
         self.transition_layer = nn.Sequential(
-            nn.Linear(first_width, second_width),
             nn.LeakyReLU(),
+            nn.Linear(first_width, second_width),
             nn.Dropout(p=dropout),
         )
 
         self.second_section = nn.ModuleList(
             [
                 nn.Sequential(
+                    nn.BatchNorm1d(second_width) if second_norm else nn.Identity(),
+                    nn.LeakyReLU(),
                     nn.Linear(second_width, second_width),
                     nn.BatchNorm1d(second_width) if second_norm else nn.Identity(),
                     nn.LeakyReLU(),
+                    nn.Linear(second_width, second_width),
                     nn.Dropout(p=dropout),
                 )
                 for _ in range(second_depth)
             ]
         )
 
-        self.last_layer = nn.Linear(second_width, 1)
+        self.last_layer = nn.Sequential(nn.LeakyReLU(), nn.Linear(second_width, 1))
 
     def forward(self, x):
         x = self.first_layer(x)

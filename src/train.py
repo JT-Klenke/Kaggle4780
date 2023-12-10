@@ -53,7 +53,7 @@ def train_model(
 ):
     train_losses = []
     val_losses = []
-    best_val = None
+    best_val = float("inf")
 
     temp_optimizer = SGD(model.parameters(), lr=0.1, momentum=0.9)
     for epoch in range(num_epochs):
@@ -61,7 +61,7 @@ def train_model(
             np.mean(
                 train_epoch(
                     model,
-                    optimizer if epoch > 3 else temp_optimizer,
+                    optimizer if epoch > 5 else temp_optimizer,
                     criterion,
                     train_dataloader,
                 )
@@ -69,10 +69,9 @@ def train_model(
         )
         val_loss = np.mean(validate_epoch(model, criterion, val_dataloader))
         val_losses.append(val_loss)
-        if best_val is None or val_loss < best_val:
+        if val_loss < best_val:
             best_val = val_loss
             torch.save(model, os.path.join(OUT_DIR, "best_val.pth"))
-
         if graph:
             plot(train_losses, "blue", os.path.join(OUT_DIR, "train_losses.png"))
             plot(val_losses, "red", os.path.join(OUT_DIR, "val_losses.png"))

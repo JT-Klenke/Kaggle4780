@@ -1,5 +1,5 @@
+from config import DEVICE, DATA_DIR, RDB_PATH, STUDY_NAME, BATCH_SIZE
 from sklearn.model_selection import KFold, train_test_split
-from config import DEVICE, DATA_DIR, OUT_DIR, BATCH_SIZE
 from torch.utils.data import DataLoader
 from model import FFNN, loss_lookup
 from train import train_model
@@ -32,8 +32,8 @@ def make_predictions(model, emb1s, emb2s):
     model.eval()
     predictions = []
     for emb1, emb2 in zip(emb1s, emb2s):
-        emb1 = torch.Tensor(emb1).to(DEVICE)
-        emb2 = torch.Tensor(emb2).to(DEVICE)
+        emb1 = torch.Tensor(emb1).unsqueeze(0).to(DEVICE)
+        emb2 = torch.Tensor(emb2).unsqueeze(0).to(DEVICE)
         emb1_sentiment = model(emb1).item()
         emb2_sentiment = model(emb2).item()
         predictions.append(0 if emb1_sentiment > emb2_sentiment else 1)
@@ -46,12 +46,12 @@ def evaluate_model(model, emb1s, emb2s, labels):
     return np.equal(labels, predictions).mean()
 
 
-def cross_validate(data, hparams, trial=None):
+def cross_validate(data, hparams):
     emb1, emb2, labels = data
 
     criterion, dataset = loss_lookup[hparams["loss"]]
 
-    kfold = KFold(n_splits=5, shuffle=True)
+    kfold = KFold(n_splits=3, shuffle=True)
     test_scores = []
 
     for step, (train_indices, test_indices) in enumerate(kfold.split(emb1)):
@@ -82,10 +82,8 @@ def cross_validate(data, hparams, trial=None):
 
         kf_mean = np.mean(test_scores)
 
-        if trial:
-            trial.report(kf_mean, step)
-            if trial.should_prune():
-                raise optuna.TrialPruned()
+        if kf_mean < 0.875:
+            return kf_mean
 
     return kf_mean
 
@@ -93,15 +91,15 @@ def cross_validate(data, hparams, trial=None):
 def objective(data, trial):
     hparams = {
         "loss": trial.suggest_categorical("loss", loss_lookup.keys()),
-        "num_epochs": trial.suggest_int("num_epochs", 20, 200),
+        "num_epochs": trial.suggest_int("num_epochs", 75, 150, step=5),
         "train_val_split": trial.suggest_float("train_val_split", 0.05, 0.5),
         "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-1, log=True),
         "momentum": trial.suggest_float("momentum", 1e-2, 1),
         "weight_decay": trial.suggest_float("weight_decay", 1e-5, 5e-1, log=True),
-        "first_width": trial.suggest_float("first_width", 0.5, 3),
+        "first_width": trial.suggest_float("first_width", 0.75, 3.0),
         "first_depth": trial.suggest_int("first_depth", 0, 10),
         "first_norm": trial.suggest_categorical("first_norm", [True, False]),
-        "second_width": trial.suggest_float("second_width", 0.125, 2),
+        "second_width": trial.suggest_float("second_width", 0.25, 1.5),
         "second_depth": trial.suggest_int("second_depth", 0, 10),
         "second_norm": trial.suggest_categorical("second_norm", [True, False]),
         "dropout": trial.suggest_float("dropout", 0, 0.75),
@@ -117,15 +115,14 @@ if __name__ == "__main__":
         train_data["emb2"],
         train_data["preference"],
     )
-    name = "cs4780"
 
     study = optuna.create_study(
-        study_name=name,
-        storage=f"sqlite:///{OUT_DIR}cs4780.db",
-        pruner=optuna.pruners.MedianPruner(),
+        study_name=STUDY_NAME,
+        storage=RDB_PATH,
         load_if_exists=True,
         direction="maximize",
     )
+
     study.optimize(
         lambda trial: objective(data, trial),
         n_trials=500,
